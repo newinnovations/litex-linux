@@ -124,6 +124,9 @@ static int litex_mmc_send_cmd(struct litex_mmc_host *host,
 			      u8 cmd, u32 arg, u8 response_len, u8 transfer)
 {
 	struct device *dev = mmc_dev(host->mmc);
+	bool use_irq = host->irq > 0 &&
+			(transfer != SD_CTL_DATA_XFER_NONE ||
+			 response_len == SD_CTL_RESP_SHORT_BUSY);
 	int ret;
 
 	litex_write32(host->sdcore + LITEX_CORE_CMDARG, arg);
@@ -135,9 +138,7 @@ static int litex_mmc_send_cmd(struct litex_mmc_host *host,
 	 * Wait for an interrupt if we have an interrupt and either there is
 	 * data to be transferred, or if the card can report busy via DAT0.
 	 */
-	if (host->irq > 0 &&
-	    (transfer != SD_CTL_DATA_XFER_NONE ||
-	     response_len == SD_CTL_RESP_SHORT_BUSY)) {
+	if (use_irq) {
 		reinit_completion(&host->cmd_done);
 		litex_write32(host->sdirq + LITEX_IRQ_ENABLE,
 			      SDIRQ_CMD_DONE | SDIRQ_CARD_DETECT);
